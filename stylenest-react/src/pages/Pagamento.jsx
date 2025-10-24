@@ -1,60 +1,109 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { loadStripe } from "@stripe/stripe-js";
 import { useCart } from "../contexts/CartContext.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
 
 const FRETE_FIXO = 19.9;
 const DESCONTO_PIX = 0.05;
+const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 function Pagamento() {
   const { items, summary, clearCart } = useCart();
   const [metodo, setMetodo] = useState("cartao");
   const [mensagem, setMensagem] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const totais = useMemo(() => {
     const subtotal = summary.total;
     const desconto = metodo === "pix" ? subtotal * DESCONTO_PIX : 0;
     const total = subtotal + FRETE_FIXO - desconto;
-    return {
-      subtotal,
-      desconto,
-      total,
-    };
+    return { subtotal, desconto, total };
   }, [summary.total, metodo]);
 
-  const handleSubmit = (event) => {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (!sessionId) {
+      return;
+    }
+    setMensagem({ tipo: "sucesso", texto: "Pagamento confirmado! Obrigado pela compra." });
+    clearCart();
+    params.delete("session_id");
+    const nextSearch = params.toString();
+    const nextUrl = window.location.pathname + (nextSearch ? `?${nextSearch}` : "");
+    window.history.replaceState({}, "", nextUrl);
+  }, [clearCart]);
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setMensagem(null);
+
     if (items.length === 0) {
       setMensagem({ tipo: "erro", texto: "Adicione itens ao carrinho antes de pagar." });
       return;
     }
+
     if (metodo === "cartao") {
-      // Create a Stripe Checkout session on the test server and redirect
-      const serverUrl = import.meta.env.VITE_PAYMENT_SERVER_URL || "http://localhost:4242";
-      fetch(`${serverUrl.replace(/\/$/, "")}/create-checkout-session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: items.map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: 1, image: it.image })),
-          successUrl: window.location.origin + "/pagamento?session_id={CHECKOUT_SESSION_ID}",
-          cancelUrl: window.location.origin + "/pagamento",
-        }),
-      })
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.url) {
-            window.location.href = data.url;
-          } else {
-            setMensagem({ tipo: "erro", texto: data.error || "Erro ao criar sessão de pagamento." });
-          }
-        })
-        .catch((err) => {
-          console.error(err);
-          setMensagem({ tipo: "erro", texto: "Erro ao conectar com o servidor de pagamento." });
+      if (!publishableKey) {
+        setMensagem({
+          tipo: "erro",
+          texto: "Chave publica da Stripe ausente. Verifique sua configuracao.",
         });
+        return;
+      }
+
+      setIsLoading(true);
+      const serverUrl = import.meta.env.VITE_PAYMENT_SERVER_URL || "http://localhost:4242";
+
+      try {
+        const response = await fetch(`${serverUrl.replace(/\/$/, "")}/create-checkout-session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: items.map((it) => ({
+              id: it.id,
+              name: it.name,
+              price: it.price,
+              quantity: 1,
+              image: it.image,
+            })),
+            successUrl: `${window.location.origin}/pagamento?session_id={CHECKOUT_SESSION_ID}`,
+            cancelUrl: `${window.location.origin}/pagamento`,
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Erro ao criar sessao de pagamento.");
+        }
+
+        if (data.sessionId && stripePromise) {
+          const stripe = await stripePromise;
+          if (!stripe) {
+            throw new Error("Nao foi possivel inicializar o Stripe Checkout.");
+          }
+          const { error } = await stripe.redirectToCheckout({ sessionId: data.sessionId });
+          if (error) {
+            throw new Error(error.message);
+          }
+        } else if (data.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error(data.error || "Erro ao criar sessao de pagamento.");
+        }
+      } catch (error) {
+        console.error(error);
+        setMensagem({
+          tipo: "erro",
+          texto: error.message || "Erro ao conectar com o servidor de pagamento.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
 
-    // Fallback for other methods (pix)
     setMensagem({ tipo: "sucesso", texto: "Pagamento confirmado! Obrigado pela compra." });
     clearCart();
   };
@@ -74,7 +123,7 @@ function Pagamento() {
                 checked={metodo === "cartao"}
                 onChange={(event) => setMetodo(event.target.value)}
               />
-              Cartão de crédito
+              Cartao de credito
             </label>
             <label>
               <input
@@ -90,24 +139,9 @@ function Pagamento() {
 
           {metodo === "cartao" ? (
             <div style={{ display: "grid", gap: "12px" }}>
-              <label>
-                Número do cartão
-                <input placeholder="0000 0000 0000 0000" required />
-              </label>
-              <label>
-                Nome impresso
-                <input required />
-              </label>
-              <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(2, 1fr)" }}>
-                <label>
-                  Validade (MM/AA)
-                  <input placeholder="MM/AA" required />
-                </label>
-                <label>
-                  CVV
-                  <input placeholder="123" required />
-                </label>
-              </div>
+              <p style={{ fontSize: "14px", color: "#333" }}>
+                Voce sera redirecionado para o Stripe Checkout para concluir o pagamento com cartao.
+              </p>
             </div>
           ) : (
             <div style={{ display: "grid", gap: "12px" }}>
@@ -116,13 +150,13 @@ function Pagamento() {
                 <input placeholder="000.000.000-00" required />
               </label>
               <p style={{ fontSize: "14px", color: "#333" }}>
-                Após confirmar, mostraremos o QR Code/Chave Pix para pagamento.
+                Apos confirmar, mostraremos o QR Code ou chave Pix para pagamento.
               </p>
             </div>
           )}
 
-          <button type="submit" className="primary">
-            Confirmar pagamento
+          <button type="submit" className="primary" disabled={isLoading}>
+            {metodo === "cartao" ? (isLoading ? "Redirecionando..." : "Pagar com Stripe") : "Confirmar pagamento"}
           </button>
 
           {mensagem && (
@@ -149,7 +183,7 @@ function Pagamento() {
               <ul style={{ listStyle: "none", padding: 0, marginTop: "16px" }}>
                 {items.map((item) => (
                   <li key={item.id} style={{ marginBottom: "12px" }}>
-                    <strong>{item.name}</strong> — {formatCurrency(item.price)}
+                    <strong>{item.name}</strong> - {formatCurrency(item.price)}
                   </li>
                 ))}
               </ul>

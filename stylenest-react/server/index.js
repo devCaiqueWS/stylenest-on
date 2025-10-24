@@ -23,7 +23,7 @@ app.get("/", (req, res) => res.json({ ok: true, message: "Stripe test server run
 // Create a Checkout Session
 app.post("/create-checkout-session", async (req, res) => {
   try {
-    const { items = [], successUrl, cancelUrl } = req.body;
+    const { items = [], successUrl, cancelUrl, paymentMethod, customer = {} } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ error: "No items provided" });
@@ -42,15 +42,56 @@ app.post("/create-checkout-session", async (req, res) => {
       quantity: it.quantity || 1,
     }));
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment",
-      line_items,
-      success_url: successUrl || `http://localhost:5173/pagamento?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `http://localhost:5173/pagamento`,
+    const allowedPaymentMethods = ["card", "pix"];
+    const selectedMethod = allowedPaymentMethods.includes(paymentMethod) ? paymentMethod : "card";
+    const payment_method_types = selectedMethod === "pix" ? ["pix"] : ["card"];
+
+    const metadata = {};
+    [
+      ["customer_nome", customer.nome],
+      ["customer_email", customer.email],
+      ["customer_telefone", customer.telefone],
+      ["customer_endereco", customer.endereco],
+      ["customer_complemento", customer.complemento],
+      ["customer_cidade", customer.cidade],
+      ["customer_estado", customer.estado],
+      ["customer_cep", customer.cep],
+      ["metodo_pagamento", selectedMethod],
+    ].forEach(([key, value]) => {
+      if (value) {
+        metadata[key] = String(value);
+      }
     });
 
-    return res.json({ url: session.url });
+    const sessionPayload = {
+      payment_method_types,
+      mode: "payment",
+      line_items,
+      success_url: successUrl || `http://localhost:5173/checkout?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `http://localhost:5173/checkout`,
+    };
+
+    if (Object.keys(metadata).length > 0) {
+      sessionPayload.metadata = metadata;
+    }
+
+    if (customer.email) {
+      sessionPayload.customer_email = customer.email;
+    }
+
+    if (selectedMethod === "pix") {
+      sessionPayload.payment_method_options = {
+        pix: {
+          expires_after_seconds: 1800,
+        },
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      ...sessionPayload,
+    });
+
+    return res.json({ url: session.url, sessionId: session.id });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message });
