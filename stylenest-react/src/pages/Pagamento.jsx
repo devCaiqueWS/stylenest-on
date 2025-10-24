@@ -1,9 +1,6 @@
 import { useMemo, useState } from "react";
 import { useCart } from "../contexts/CartContext.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements } from "@stripe/react-stripe-js";
-import StripePaymentForm from "../components/StripePaymentForm.jsx";
 
 const FRETE_FIXO = 19.9;
 const DESCONTO_PIX = 0.05;
@@ -30,8 +27,32 @@ function Pagamento() {
       setMensagem({ tipo: "erro", texto: "Adicione itens ao carrinho antes de pagar." });
       return;
     }
-    // For card payments we render the Stripe Elements form instead of submitting here.
-    // The StripePaymentForm component will call the server to create a PaymentIntent.
+    if (metodo === "cartao") {
+      // Create a Stripe Checkout session on the test server and redirect
+      const serverUrl = import.meta.env.VITE_PAYMENT_SERVER_URL || "http://localhost:4242";
+      fetch(`${serverUrl.replace(/\/$/, "")}/create-checkout-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: 1, image: it.image })),
+          successUrl: window.location.origin + "/pagamento?session_id={CHECKOUT_SESSION_ID}",
+          cancelUrl: window.location.origin + "/pagamento",
+        }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            setMensagem({ tipo: "erro", texto: data.error || "Erro ao criar sessão de pagamento." });
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          setMensagem({ tipo: "erro", texto: "Erro ao conectar com o servidor de pagamento." });
+        });
+      return;
+    }
 
     // Fallback for other methods (pix)
     setMensagem({ tipo: "sucesso", texto: "Pagamento confirmado! Obrigado pela compra." });
@@ -68,34 +89,26 @@ function Pagamento() {
           </div>
 
           {metodo === "cartao" ? (
-            (() => {
-              const publishable = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-              if (!publishable) {
-                return (
-                  <div style={{ padding: 12, background: "#fff3cd", borderRadius: 8 }}>
-                    <strong>Atenção:</strong> A chave pública da Stripe não está configurada. Defina
-                    <code>VITE_STRIPE_PUBLISHABLE_KEY</code> em seu .env para testar o pagamento com cartão.
-                  </div>
-                );
-              }
-
-              const stripePromise = loadStripe(publishable);
-              return (
-                <Elements stripe={stripePromise}>
-                  <StripePaymentForm
-                    items={items.map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity || 1, image: it.image }))}
-                    amount={totais.total}
-                    onSuccess={(paymentIntent) => {
-                      setMensagem({ tipo: "sucesso", texto: "Pagamento confirmado! Obrigado pela compra." });
-                      clearCart();
-                    }}
-                    onError={(err) => {
-                      setMensagem({ tipo: "erro", texto: err.message || "Erro no pagamento" });
-                    }}
-                  />
-                </Elements>
-              );
-            })()
+            <div style={{ display: "grid", gap: "12px" }}>
+              <label>
+                Número do cartão
+                <input placeholder="0000 0000 0000 0000" required />
+              </label>
+              <label>
+                Nome impresso
+                <input required />
+              </label>
+              <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(2, 1fr)" }}>
+                <label>
+                  Validade (MM/AA)
+                  <input placeholder="MM/AA" required />
+                </label>
+                <label>
+                  CVV
+                  <input placeholder="123" required />
+                </label>
+              </div>
+            </div>
           ) : (
             <div style={{ display: "grid", gap: "12px" }}>
               <label>
@@ -108,11 +121,9 @@ function Pagamento() {
             </div>
           )}
 
-          {metodo !== "cartao" && (
-            <button type="submit" className="primary">
-              Confirmar pagamento
-            </button>
-          )}
+          <button type="submit" className="primary">
+            Confirmar pagamento
+          </button>
 
           {mensagem && (
             <div
