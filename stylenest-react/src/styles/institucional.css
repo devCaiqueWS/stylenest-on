@@ -1,0 +1,173 @@
+/* estilos para páginas institucionais: fundo preto, acentos amarelos, texto branco */
+.page-wrapper {
+  background-color: #000000;
+  color: #ffffff;
+  /* make institutional pages full-bleed: occupy full width and remove centered max width */
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 48px 40px;
+  min-height: calc(100vh - 160px);
+}
+
+.page-wrapper h2 {
+  color: #ffd400; /* amarelo vivo */
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.page-wrapper h3 {
+  color: #ffd400;
+  font-size: 20px;
+  margin-top: 18px;
+}
+
+.page-wrapper p,
+.page-wrapper li {
+  color: #ffffff;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.95);
+}
+
+.page-wrapper .content-section {
+  background: rgba(255,255,255,0.03);
+  border-left: 4px solid #ffd400;
+  padding: 14px;
+  margin-top: 18px;
+  border-radius: 8px;
+}
+
+.page-wrapper ul {
+  margin-left: 1.25rem;
+}
+
+/* Links e botões dentro das páginas institucionais */
+.page-wrapper a {
+  color: #ffd400;
+}
+
+.page-wrapper strong {
+  color: #ffffff;
+}
+
+/* Responsividade */
+@media (max-width: 640px) {
+  .page-wrapper {
+    padding: 28px 12px;
+  }
+
+  .page-wrapper h2 {
+    font-size: 28px;
+  }
+}
+
+/* header + site shell adjustments when viewing institucional pages */
+body.institucional .main-header {
+  background: #070707; /* dark header */
+  border-bottom: none;
+  color: #fff;
+}
+
+body.institucional .main-header .logo {
+  color: #ffffff;
+}
+
+body.institucional .main-header .nav-link {
+  color: #ff7f2a; /* accent orange */
+  font-weight: 600;
+}
+
+body.institucional .main-header .nav-link.active,
+body.institucional .main-header .nav-link:hover {
+  color: #ff9b57;
+}
+
+/* Keep actions buttons more subtle on dark header */
+body.institucional .main-header .auth-btn {
+  border-color: rgba(255,255,255,0.12);
+  color: #fff;
+}
+
+/* inner container: center the text content inside the full-bleed black wrapper */
+.page-wrapper .institucional-inner {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* form controls styling for institucional (dark) pages */
+body.institucional .page-wrapper label {
+  display: block;
+  margin-bottom: 12px;
+  color: rgba(255,255,255,0.95);
+  font-weight: 600;
+}
+
+body.institucional .page-wrapper input,
+body.institucional .page-wrapper select,
+body.institucional .page-wrapper textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: #fff;
+  margin-top: 8px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body.institucional .page-wrapper input:focus,
+body.institucional .page-wrapper select:focus,
+body.institucional .page-wrapper textarea:focus {
+  border-color: rgba(255,210,0,0.95);
+  box-shadow: 0 0 0 4px rgba(255,210,0,0.08);
+}
+
+/* Radio buttons accent */
+body.institucional .page-wrapper input[type="radio"] {
+  accent-color: #ffd400;
+  transform: scale(1.1);
+  margin-right: 8px;
+}
+
+/* Buttons */
+body.institucional .page-wrapper button.primary {
+  background: #111;
+  color: #fff;
+  padding: 16px 28px;
+  border-radius: 999px;
+  border: none;
+  font-weight: 700;
+}
+
+body.institucional .page-wrapper .btn-border {
+  background: transparent;
+  border: 2px solid rgba(255,255,255,0.12);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 18px;
+}
+
+/* Summary panel on dark pages */
+body.institucional .page-wrapper aside {
+  background: #111111;
+  color: rgba(255,255,255,0.95);
+  padding: 28px;
+  border-radius: 12px;
+}
+
+body.institucional .page-wrapper aside h3 {
+  color: #ffd400;
+}
+
+body.institucional .page-wrapper aside ul li {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+
+/* make the summary remove button more subtle on dark */
+body.institucional .page-wrapper .btn-border:hover {
+  background: rgba(255,255,255,0.02);
+}

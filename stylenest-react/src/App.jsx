@@ -1,12 +1,14 @@
-import { useState } from "react";
-import { Route, Routes } from "react-router-dom";
+﻿import { useCallback, useEffect, useState } from "react";
+import { Route, Routes, useLocation } from "react-router-dom";
 import Header from "./components/Header.jsx";
 import Footer from "./components/Footer.jsx";
 import CartDrawer from "./components/CartDrawer.jsx";
 import LoginModal from "./components/LoginModal.jsx";
 import RegisterModal from "./components/RegisterModal.jsx";
 import Home from "./pages/Home.jsx";
-import CategoryPage from "./pages/CategoryPage.jsx";
+import Homem from "./pages/Homem.jsx";
+import Mulher from "./pages/Mulher.jsx";
+import Kids from "./pages/Kids.jsx";
 import CompraSegura from "./pages/CompraSegura.jsx";
 import PoliticaPrivacidade from "./pages/PoliticaPrivacidade.jsx";
 import PoliticaTroca from "./pages/PoliticaTroca.jsx";
@@ -21,6 +23,12 @@ function App() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const location = useLocation();
+
+  // Cart is centralized in the Header (CartDrawer). Header's cart button will open CartDrawer.
+  const handleCartClick = useCallback(() => {
+    setCartOpen(true);
+  }, []);
 
   return (
     <AuthProvider>
@@ -29,13 +37,15 @@ function App() {
           <Header
             onLoginClick={() => setLoginOpen(true)}
             onRegisterClick={() => setRegisterOpen(true)}
-            onCartClick={() => setCartOpen(true)}
+            onCartClick={handleCartClick}
           />
 
           <div style={{ flex: 1 }}>
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/:slug(mulher|homem|kids)" element={<CategoryPage />} />
+              <Route path="/mulher" element={<Mulher />} />
+              <Route path="/homem" element={<Homem />} />
+              <Route path="/kids" element={<Kids />} />
               <Route path="/compra-segura" element={<CompraSegura />} />
               <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
               <Route path="/politica-troca" element={<PoliticaTroca />} />

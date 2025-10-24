@@ -400,6 +400,58 @@ button.primary:hover {
   cursor: pointer;
 }
 
+/* Stripe payment form styles */
+.stripe-payment-form {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+.stripe-payment-form .payment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.stripe-payment-form .payment-header h4 {
+  margin: 0;
+  font-size: 18px;
+}
+.stripe-payment-form .amount {
+  font-weight: 700;
+  color: #111;
+}
+.stripe-payment-form .payment-form label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #222;
+}
+.stripe-payment-form .payment-form input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  margin-top: 6px;
+}
+.stripe-payment-form .card-element-wrapper {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+}
+.stripe-payment-form .payment-message {
+  margin: 12px 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: #fff3f3;
+  color: #a33;
+}
+.stripe-payment-form .payment-form .btn {
+  margin-top: 12px;
+  width: 100%;
+}
+
 #perfil-container {
   position: relative;
 }

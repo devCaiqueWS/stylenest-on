@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "../contexts/CartContext.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
+import "../styles/institucional.css";
 
 function Checkout() {
+  useEffect(() => {
+    document.body.classList.add("institucional");
+    return () => document.body.classList.remove("institucional");
+  }, []);
   const { items, summary, removeItem, clearCart } = useCart();
   const [formData, setFormData] = useState({
     nome: "",
@@ -34,11 +39,12 @@ function Checkout() {
 
   return (
     <div className="page-wrapper">
-      <h2>Checkout</h2>
-      <p>Revise seu pedido e informe os dados para entrega e pagamento.</p>
+      <div className="institucional-inner">
+        <h2 style={{ color: "#ffd400" }}>Checkout</h2>
+        <p>Revise seu pedido e informe os dados para entrega e pagamento.</p>
 
-      <div style={{ display: "grid", gap: "32px", gridTemplateColumns: "2fr 1fr" }}>
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div style={{ display: "grid", gap: "32px", gridTemplateColumns: "2fr 1fr" }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div>
             <h3>Dados Pessoais</h3>
             <label>
@@ -119,9 +125,9 @@ function Checkout() {
               {mensagem.texto}
             </div>
           )}
-        </form>
+          </form>
 
-        <aside style={{ background: "#f7f7f7", padding: "20px", borderRadius: "12px" }}>
+          <aside>
           <h3>Resumo do pedido</h3>
           {items.length === 0 ? (
             <p>Seu carrinho está vazio.</p>
@@ -157,6 +163,7 @@ function Checkout() {
           )}
           <div style={{ fontWeight: 700, marginTop: "16px" }}>Total: {summary.formattedTotal}</div>
         </aside>
+        </div>
       </div>
     </div>
   );
