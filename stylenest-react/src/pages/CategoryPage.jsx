@@ -1,18 +1,13 @@
 import { useMemo } from "react";
 import { Navigate, useParams } from "react-router-dom";
-import { categories, productsByCategory } from "../data/products.js";
+import { categories } from "../data/products.js";
+import { useCategoryProducts } from "../hooks/useCategoryProducts.js";
 import ProductCard from "../components/ProductCard.jsx";
 
 function CategoryPage() {
   const { slug } = useParams();
-
-  const { category, products } = useMemo(() => {
-    const foundCategory = categories.find((item) => item.slug === slug);
-    return {
-      category: foundCategory,
-      products: productsByCategory[slug] ?? [],
-    };
-  }, [slug]);
+  const category = useMemo(() => categories.find((item) => item.slug === slug), [slug]);
+  const { products, loading, error } = useCategoryProducts(slug);
 
   if (!category) {
     return <Navigate to="/" replace />;
@@ -25,9 +20,23 @@ function CategoryPage() {
         <p>{category.description}</p>
       </section>
       <section className="product-grid">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
+        {loading && (
+          <p className="product-grid__status" aria-live="polite">
+            Carregando produtos...
+          </p>
+        )}
+        {!loading && error && (
+          <p className="product-grid__status product-grid__status--error" role="status">
+            {error}
+          </p>
+        )}
+        {!loading && !error && products.length === 0 && (
+          <p className="product-grid__status" aria-live="polite">
+            Nenhum produto disponivel no momento.
+          </p>
+        )}
+        {!loading && !error &&
+          products.map((product) => <ProductCard key={product.id} product={product} />)}
       </section>
     </div>
   );
