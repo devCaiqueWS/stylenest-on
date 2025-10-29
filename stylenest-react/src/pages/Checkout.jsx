@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { useCart } from "../contexts/CartContext.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
-import { APP_BASE_URL } from "../config/appConfig.js";
 
 const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
@@ -81,8 +80,8 @@ function Checkout() {
           })),
           paymentMethod: formData.pagamento,
           customer: formData,
-          successUrl: `${APP_BASE_URL}/checkout?session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${APP_BASE_URL}/checkout`,
+          successUrl: `${window.location.origin}/checkout?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/checkout`,
         }),
       });
 

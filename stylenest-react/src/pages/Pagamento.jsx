@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { useCart } from "../contexts/CartContext.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
-import { APP_BASE_URL } from "../config/appConfig.js";
 
 const FRETE_FIXO = 19.9;
 const DESCONTO_PIX = 0.05;
@@ -69,8 +68,8 @@ function Pagamento() {
               quantity: 1,
               image: it.image,
             })),
-            successUrl: `${APP_BASE_URL}/pagamento?session_id={CHECKOUT_SESSION_ID}`,
-            cancelUrl: `${APP_BASE_URL}/pagamento`,
+            successUrl: `${window.location.origin}/pagamento?session_id={CHECKOUT_SESSION_ID}`,
+            cancelUrl: `${window.location.origin}/pagamento`,
           }),
         });
 
