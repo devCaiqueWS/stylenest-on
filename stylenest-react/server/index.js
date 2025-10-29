@@ -9,6 +9,9 @@ const app = express();
 const port = process.env.PORT || 4242;
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
+const appBaseUrl =
+  (process.env.APP_BASE_URL && process.env.APP_BASE_URL.replace(/\/$/, "")) ||
+  "http://localhost:5173";
 if (!stripeSecret) {
   console.warn("WARNING: STRIPE_SECRET_KEY is not set. The server will not work until you set it in .env");
 }
@@ -67,8 +70,10 @@ app.post("/create-checkout-session", async (req, res) => {
       payment_method_types,
       mode: "payment",
       line_items,
-      success_url: successUrl || `http://localhost:5173/checkout?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `http://localhost:5173/checkout`,
+      success_url:
+        successUrl ||
+        `${appBaseUrl}/checkout?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${appBaseUrl}/checkout`,
     };
 
     if (Object.keys(metadata).length > 0) {
