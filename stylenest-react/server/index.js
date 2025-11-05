@@ -23,7 +23,14 @@ app.get("/", (req, res) => res.json({ ok: true, message: "Stripe test server run
 // Create a Checkout Session
 app.post("/create-checkout-session", async (req, res) => {
   try {
-    const { items = [], successUrl, cancelUrl, paymentMethod, customer = {} } = req.body;
+    const {
+      items = [],
+      successUrl,
+      cancelUrl,
+      paymentMethod,
+      customer = {},
+      orderId,
+    } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ error: "No items provided" });
@@ -62,6 +69,10 @@ app.post("/create-checkout-session", async (req, res) => {
         metadata[key] = String(value);
       }
     });
+
+    if (orderId) {
+      metadata.order_id = String(orderId);
+    }
 
     const sessionPayload = {
       payment_method_types,
