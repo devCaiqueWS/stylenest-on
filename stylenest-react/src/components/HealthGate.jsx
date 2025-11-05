@@ -9,28 +9,65 @@ function HealthGate({ children, intervalMs = 120000 }) {
     return base ? `${base}/health` : "/api/health";
   }, []);
 
+  const stripeHealthUrl = useMemo(() => {
+    const base = (import.meta?.env?.VITE_PAYMENT_SERVER_URL || "").replace(/\/$/, "");
+    if (!base) return null; // sem server explicitado, no checa Stripe
+    return `${base}/api/health`;
+  }, []);
+
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(null);
   const [apiDown, setApiDown] = useState(false);
+  const [stripeDown, setStripeDown] = useState(false);
   const timerRef = useRef(null);
 
   const checkHealth = async () => {
+    let apiOk = false;
+    let payOk = true; // assume true se no for obrigatorio checar
+
+    // 1) API principal (obrigatorio)
     try {
-      setError(null);
       const resp = await fetch(defaultHealthUrl, { method: "GET" });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      // success
+      apiOk = resp.ok;
+    } catch (_) {
+      apiOk = false;
+    }
+
+    // 2) Servidor de pagamento/Stripe (obrigatorio somente se VITE_PAYMENT_SERVER_URL estiver definido)
+    if (stripeHealthUrl) {
+      try {
+        const resp = await fetch(stripeHealthUrl, { method: "GET" });
+        payOk = resp.ok;
+      } catch (_) {
+        payOk = false;
+      }
+    }
+
+    const allOk = apiOk && payOk;
+
+    if (allOk) {
+      setError(null);
       setReady(true);
       setApiDown(false);
+      setStripeDown(false);
       return true;
-    } catch (err) {
-      if (!ready) {
-        setError("Nao foi possivel conectar a API. Tente novamente.");
-      } else {
-        setApiDown(true);
-      }
-      return false;
     }
+
+    // Atualiza estados de indisponibilidade para feedback
+    if (!apiOk) setApiDown(true);
+    if (stripeHealthUrl && !payOk) setStripeDown(true);
+
+    if (!ready) {
+      const msgs = [];
+      if (!apiOk) msgs.push("API");
+      if (stripeHealthUrl && !payOk) msgs.push("Stripe");
+      setError(
+        msgs.length > 0
+          ? `Nao foi possivel conectar: ${msgs.join(" e ")}. Tente novamente.`
+          : "Nao foi possivel conectar. Tente novamente."
+      );
+    }
+    return false;
   };
 
   useEffect(() => {
@@ -53,7 +90,9 @@ function HealthGate({ children, intervalMs = 120000 }) {
         color: "#fff",
       }}>
         <div style={{ fontSize: 22, fontWeight: 700 }}>Carregando a StyleNest…</div>
-        <div style={{ opacity: 0.8 }}>Verificando disponibilidade da API…</div>
+        <div style={{ opacity: 0.8 }}>
+          Verificando disponibilidade da API{stripeHealthUrl ? " e do servidor de pagamento" : ""}…
+        </div>
         {error && (
           <div style={{ color: "#ffdddd", background: "#3b1f1f", padding: 12, borderRadius: 8 }}>
             {error}
@@ -74,7 +113,7 @@ function HealthGate({ children, intervalMs = 120000 }) {
   return (
     <>
       {children}
-      {apiDown && (
+      {(apiDown || stripeDown) && (
         <div style={{
           position: "fixed",
           bottom: 16,
@@ -86,7 +125,9 @@ function HealthGate({ children, intervalMs = 120000 }) {
           boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
           zIndex: 1000,
         }}>
-          API instavel. Tentando reconectar…
+          {apiDown && "API instavel. "}
+          {stripeDown && "Servidor de pagamento instavel. "}
+          Tentando reconectar…
         </div>
       )}
     </>
@@ -94,4 +135,3 @@ function HealthGate({ children, intervalMs = 120000 }) {
 }
 
 export default HealthGate;
-
