@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { useCart } from "../contexts/CartContext.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
+import { API_BASE_URL } from "../data/products.js";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
 const FRETE_FIXO = 19.9;
 const DESCONTO_PIX = 0.05;
@@ -10,6 +12,7 @@ const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 function Pagamento() {
   const { items, summary, clearCart } = useCart();
+  const { token } = useAuth();
   const [metodo, setMetodo] = useState("cartao");
   const [mensagem, setMensagem] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,8 +58,56 @@ function Pagamento() {
 
       setIsLoading(true);
       const serverUrl = import.meta.env.VITE_PAYMENT_SERVER_URL || "http://localhost:4242";
+      const ordersApiUrl = (import.meta.env.VITE_ORDERS_API_URL || API_BASE_URL || "").replace(/\/$/, "");
+
+      // Pre-register order (pending) before redirecting to Stripe — mandatory
+      const preRegisterOrder = async () => {
+        if (!ordersApiUrl) {
+          throw new Error(
+            "Configuração ausente: defina VITE_ORDERS_API_URL ou API_BASE_URL para criar o pedido."
+          );
+        }
+
+        const payload = {
+          status: "pending",
+          paymentMethod: "cartao",
+          total: summary.total,
+          itens: items.map((it) => ({
+            id: it.id,
+            productId: it.productId,
+            nome: it.name,
+            preco: it.price,
+            quantidade: 1,
+            tamanho: it.size || null,
+            imagem: it.image,
+          })),
+        };
+
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const resposta = await fetch(`${ordersApiUrl}/pedidos`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload),
+        });
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) {
+          throw new Error(dados.message || dados.mensagem || "Falha ao criar pedido");
+        }
+        const createdId =
+          dados.id || dados.pedidoId || dados.orderId || dados._id || dados.codigo || null;
+        if (!createdId) {
+          throw new Error("A API não retornou o identificador do pedido.");
+        }
+        return createdId;
+      };
 
       try {
+        const orderId = await preRegisterOrder();
+        if (!orderId) {
+          throw new Error("Não foi possível criar o pedido. Tente novamente.");
+        }
         const response = await fetch(`${serverUrl.replace(/\/$/, "")}/create-checkout-session`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -68,6 +119,7 @@ function Pagamento() {
               quantity: 1,
               image: it.image,
             })),
+            orderId,
             successUrl: `${window.location.origin}/pagamento?session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: `${window.location.origin}/pagamento`,
           }),

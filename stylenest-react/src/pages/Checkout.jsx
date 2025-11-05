@@ -2,12 +2,15 @@ import { useEffect, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { useCart } from "../contexts/CartContext.jsx";
 import { formatCurrency } from "../utils/formatCurrency.js";
+import { API_BASE_URL } from "../data/products.js";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
 const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 function Checkout() {
   const { items, summary, removeItem, clearCart } = useCart();
+  const { token, usuario, isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
@@ -65,8 +68,103 @@ function Checkout() {
 
     setIsLoading(true);
     const serverUrl = import.meta.env.VITE_PAYMENT_SERVER_URL || "http://localhost:4242";
+    const ordersApiUrl = (import.meta.env.VITE_ORDERS_API_URL || API_BASE_URL || "").replace(/\/$/, "");
+
+    // Pre-register the order before creating the Stripe session (mandatory)
+    const preRegisterOrder = async () => {
+      if (!ordersApiUrl) {
+        throw new Error(
+          "Configuração ausente: defina VITE_ORDERS_API_URL ou API_BASE_URL para criar o pedido."
+        );
+      }
+
+      const payload = {
+        status: "pending",
+        paymentMethod: formData.pagamento,
+        total: summary.total,
+        cliente: {
+          nome: formData.nome,
+          email: formData.email,
+          telefone: formData.telefone,
+          endereco: formData.endereco,
+          complemento: formData.complemento,
+          cidade: formData.cidade,
+          estado: formData.estado,
+          cep: formData.cep,
+        },
+        itens: items.map((it) => ({
+          id: it.id,
+          productId: it.productId,
+          nome: it.name,
+          preco: it.price,
+          quantidade: 1,
+          tamanho: it.size || null,
+          imagem: it.image,
+        })),
+      };
+
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const resposta = await fetch(`${ordersApiUrl}/pedidos`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const dados = await resposta.json().catch(() => ({}));
+      if (!resposta.ok) {
+        throw new Error(dados.message || dados.mensagem || "Falha ao criar pedido");
+      }
+      const createdId =
+        dados.id || dados.pedidoId || dados.orderId || dados._id || dados.codigo || null;
+      if (!createdId) {
+        throw new Error("A API não retornou o identificador do pedido.");
+      }
+      return createdId;
+    };
+
+    // New: simplified pre-registration per cart item
+    const preRegisterSimpleOrders = async () => {
+      if (!ordersApiUrl) {
+        throw new Error(
+          "Configuracao ausente: defina VITE_ORDERS_API_URL ou API_BASE_URL para criar o pedido."
+        );
+      }
+
+      const userId = usuario?.id ?? usuario?._id ?? usuario?.usuarioId;
+      if (!isAuthenticated || !userId) {
+        throw new Error("E necessario fazer login para finalizar a compra.");
+      }
+
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      for (const it of items) {
+        const payload = {
+          usuarioId: userId,
+          produtoId: it.productId,
+          quantidade: 1,
+        };
+        const resposta = await fetch(`${ordersApiUrl}/pedidos`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload),
+        });
+        if (!resposta.ok) {
+          const dados = await resposta.json().catch(() => ({}));
+          throw new Error(dados.message || dados.mensagem || "Falha ao registrar o pedido");
+        }
+      }
+      return true;
+    };
 
     try {
+      await preRegisterSimpleOrders();
+      const orderId = true;
+      if (!orderId) {
+        throw new Error("Não foi possível criar o pedido. Tente novamente.");
+      }
       const response = await fetch(`${serverUrl.replace(/\/$/, "")}/create-checkout-session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -77,6 +175,8 @@ function Checkout() {
             price: it.price,
             quantity: 1,
             image: it.image,
+            size: it.size || null,
+            productId: it.productId,
           })),
           paymentMethod: formData.pagamento,
           customer: formData,

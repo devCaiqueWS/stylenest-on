@@ -165,6 +165,69 @@ const normalizeProduct = (rawProduct, index, categoryKeysLower) => {
       rawProduct.estoques
   );
 
+  // Normalize reviews/avaliacoes from various possible API shapes
+  const pickReviewsSource = () => {
+    if (Array.isArray(rawProduct.reviews)) return rawProduct.reviews;
+    if (Array.isArray(rawProduct.avaliacoes)) return rawProduct.avaliacoes;
+    if (Array.isArray(rawProduct.avaliacao)) return rawProduct.avaliacao;
+    if (Array.isArray(rawProduct.opinioes)) return rawProduct.opinioes;
+    if (Array.isArray(rawProduct.comentarios)) return rawProduct.comentarios;
+    // Object container case
+    const objCandidate =
+      (rawProduct.reviews && typeof rawProduct.reviews === "object") ? rawProduct.reviews :
+      (rawProduct.avaliacoes && typeof rawProduct.avaliacoes === "object") ? rawProduct.avaliacoes :
+      (rawProduct.avaliacao && typeof rawProduct.avaliacao === "object") ? rawProduct.avaliacao :
+      (rawProduct.opinioes && typeof rawProduct.opinioes === "object") ? rawProduct.opinioes :
+      (rawProduct.comentarios && typeof rawProduct.comentarios === "object") ? rawProduct.comentarios :
+      null;
+    if (objCandidate) {
+      try {
+        return Object.values(objCandidate);
+      } catch (_) {
+        return [];
+      }
+    }
+    // Single primitive/comment string
+    if (typeof rawProduct.reviews === "string") return [rawProduct.reviews];
+    if (typeof rawProduct.avaliacoes === "string") return [rawProduct.avaliacoes];
+    if (typeof rawProduct.avaliacao === "string") return [rawProduct.avaliacao];
+    if (typeof rawProduct.opinioes === "string") return [rawProduct.opinioes];
+    if (typeof rawProduct.comentarios === "string") return [rawProduct.comentarios];
+    return [];
+  };
+
+  const normalizeSingleReview = (raw, idx) => {
+    if (!raw) return null;
+    if (typeof raw === "string" || typeof raw === "number") {
+      return {
+        id: `review-${index}-${idx}`,
+        rating: 5,
+        comment: String(raw),
+      };
+    }
+    if (typeof raw === "object") {
+      const id = String(raw.id ?? raw._id ?? `review-${index}-${idx}`);
+      const ratingRaw =
+        raw.rating ?? raw.nota ?? raw.estrelas ?? raw.stars ?? raw.rate ?? raw.avaliacao;
+      const commentRaw =
+        raw.comment ?? raw.comentario ?? raw.coment ?? raw.text ?? raw.texto ?? raw.descricao ?? raw.review;
+      const ratingNum = Number(ratingRaw);
+      const rating = Number.isFinite(ratingNum)
+        ? Math.max(1, Math.min(5, Math.round(ratingNum)))
+        : 5;
+      return {
+        id,
+        rating,
+        comment: commentRaw ? String(commentRaw) : "",
+      };
+    }
+    return null;
+  };
+
+  const productReviews = pickReviewsSource()
+    .map((r, i) => normalizeSingleReview(r, i))
+    .filter(Boolean);
+
   return {
     ...rawProduct,
     id: String(productId),
@@ -173,6 +236,7 @@ const normalizeProduct = (rawProduct, index, categoryKeysLower) => {
     image: productImage,
     description: productDescription ?? undefined,
     sizes: Array.isArray(productSizes) ? productSizes : [],
+    reviews: productReviews,
   };
 };
 
