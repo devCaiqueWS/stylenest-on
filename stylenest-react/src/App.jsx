@@ -18,6 +18,7 @@ import Pagamento from "./pages/Pagamento.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import { AuthProvider } from "./contexts/AuthContext.jsx";
 import { CartProvider } from "./contexts/CartContext.jsx";
+import HealthGate from "./components/HealthGate.jsx";
 
 function App() {
   const [loginOpen, setLoginOpen] = useState(false);
@@ -33,35 +34,37 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-          <Header
-            onLoginClick={() => setLoginOpen(true)}
-            onRegisterClick={() => setRegisterOpen(true)}
-            onCartClick={handleCartClick}
-          />
+        <HealthGate>
+          <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+            <Header
+              onLoginClick={() => setLoginOpen(true)}
+              onRegisterClick={() => setRegisterOpen(true)}
+              onCartClick={handleCartClick}
+            />
 
-          <div style={{ flex: 1 }}>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/mulher" element={<Mulher />} />
-              <Route path="/homem" element={<Homem />} />
-              <Route path="/kids" element={<Kids />} />
-              <Route path="/compra-segura" element={<CompraSegura />} />
-              <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
-              <Route path="/politica-troca" element={<PoliticaTroca />} />
-              <Route path="/quem-somos" element={<QuemSomos />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/pagamento" element={<Pagamento />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <div style={{ flex: 1 }}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/mulher" element={<Mulher />} />
+                <Route path="/homem" element={<Homem />} />
+                <Route path="/kids" element={<Kids />} />
+                <Route path="/compra-segura" element={<CompraSegura />} />
+                <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
+                <Route path="/politica-troca" element={<PoliticaTroca />} />
+                <Route path="/quem-somos" element={<QuemSomos />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/pagamento" element={<Pagamento />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+
+            <Footer />
+
+            <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+            <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+            <RegisterModal open={registerOpen} onClose={() => setRegisterOpen(false)} />
           </div>
-
-          <Footer />
-
-          <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
-          <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
-          <RegisterModal open={registerOpen} onClose={() => setRegisterOpen(false)} />
-        </div>
+        </HealthGate>
       </CartProvider>
     </AuthProvider>
   );

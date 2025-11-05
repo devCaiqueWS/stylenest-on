@@ -20,6 +20,33 @@ app.use(express.json());
 
 app.get("/", (req, res) => res.json({ ok: true, message: "Stripe test server running" }));
 
+// Simple health endpoint for the app to probe availability
+app.get("/api/health", async (req, res) => {
+  try {
+    // Optionally, if ORDERS_API_URL is configured, try to ping it as well
+    const upstream = process.env.ORDERS_API_URL || process.env.API_BASE_URL;
+    let upstreamOk = null;
+    if (upstream) {
+      try {
+        const url = String(upstream).replace(/\/$/, "") + "/health";
+        const response = await fetch(url).catch(() => null);
+        upstreamOk = Boolean(response && response.ok);
+      } catch (_) {
+        upstreamOk = false;
+      }
+    }
+
+    return res.json({
+      ok: true,
+      service: "stripe-test-server",
+      timestamp: Date.now(),
+      upstreamOk,
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message || "Health check error" });
+  }
+});
+
 // Create a Checkout Session
 app.post("/create-checkout-session", async (req, res) => {
   try {
